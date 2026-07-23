@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-parchment text-ink font-sans antialiased;
+    @apply dark:bg-[#161327] dark:text-parchment-100;
+  }
+  /* Japanese learning text should be large and legible */
+  .jp {
+    @apply font-jp;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-parchment dark:ring-offset-[#161327];
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
