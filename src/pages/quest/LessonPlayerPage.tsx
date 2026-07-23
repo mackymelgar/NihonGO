@@ -31,6 +31,14 @@ export default function LessonPlayerPage() {
   const [completion, setCompletion] = useState<CompleteQuestResult | null>(null);
   const scoreRef = useRef({ correct: 0, total: 0 });
 
+  // Reset state when navigating to a different quest.
+  useEffect(() => {
+    setCompletion(null);
+    setInitialized(false);
+    setStepIndex(0);
+    scoreRef.current = { correct: 0, total: 0 };
+  }, [questSlug]);
+
   // Resume from saved progress once, when data loads.
   useEffect(() => {
     if (data && !initialized) {

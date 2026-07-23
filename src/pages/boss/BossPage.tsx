@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { X, Swords, Heart, RefreshCw, Target } from 'lucide-react';
 import { useBossChallenge, useSubmitBoss, type BossAnswers } from '@/hooks/learner/useBoss';
@@ -22,6 +22,15 @@ export default function BossPage() {
   const [correct, setCorrect] = useState(0);
   const [result, setResult] = useState<BossAttemptResult | null>(null);
   const answersRef = useRef<BossAnswers>({});
+
+  // Reset state when navigating to a different boss
+  useEffect(() => {
+    setPhase('entry');
+    setIndex(0);
+    setCorrect(0);
+    setResult(null);
+    answersRef.current = {};
+  }, [questSlug]);
 
   if (isLoading) return <LoadingState label="Approaching the boss…" />;
   if (isError || !data) return <ErrorState message="Couldn't load this boss." onRetry={() => refetch()} />;
