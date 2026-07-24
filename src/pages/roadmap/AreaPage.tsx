@@ -13,7 +13,7 @@ export default function AreaPage() {
   if (isLoading) return <LoadingState />;
   if (isError || !data) return <ErrorState message="Couldn't load this area." onRetry={() => refetch()} />;
 
-  const area = data.areas.find((a) => a.slug === areaSlug);
+  const area = data.courses.flatMap((c) => c.areas).find((a) => a.slug === areaSlug);
   if (!area) return <ErrorState title="Area not found" onRetry={() => navigate('/roadmap')} />;
 
   return (

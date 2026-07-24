@@ -18,6 +18,9 @@ import { NUMBER_THEMES } from './data/numbers';
 import { VOCAB_THEMES } from './data/vocab';
 import { KANJI_THEMES } from './data/kanji';
 import { GRAMMAR_POINTS } from './data/grammar';
+import { N4_KANJI_THEMES } from './data/n4-kanji';
+import { N4_VOCAB_THEMES } from './data/n4-vocab';
+import { N4_GRAMMAR_POINTS } from './data/n4-grammar';
 import type { GrammarPoint, KanjiTheme, VocabTheme } from './data/types';
 
 const url = process.env.VITE_SUPABASE_URL;
@@ -28,7 +31,9 @@ if (!url || !serviceKey) {
 }
 
 const db = createClient(url, serviceKey, { auth: { persistSession: false } });
-const COURSE_SLUG = 'japanese-zero-to-hero';
+// Every course this seed owns (includes the legacy single-course slug so old
+// data is cleaned up on re-seed).
+const COURSE_SLUGS = ['japanese-zero-to-hero', 'jlpt-n5', 'jlpt-n4'];
 
 // ---------- low-level helpers ----------
 async function insert<T = any>(table: string, row: Record<string, unknown>): Promise<T> {
@@ -118,58 +123,96 @@ async function del(table: string, apply: (q: any) => any) {
 }
 
 /**
+ * Delete rows matching `column IN (ids)`, in chunks. PostgREST encodes `.in()`
+ * into the request URL, so a few hundred UUIDs blows past URL length limits and
+ * the filter silently stops matching — which previously let FK violations
+ * through. Chunking keeps every request small.
+ */
+const DELETE_CHUNK = 40;
+async function delIn(table: string, column: string, ids: string[]) {
+  for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
+    const slice = ids.slice(i, i + DELETE_CHUNK);
+    const { error } = await db.from(table).delete().in(column, slice);
+    if (error) throw new Error(`wipe ${table} (${column}): ${error.message}`);
+  }
+}
+
+/** Page through a select to collect every id — PostgREST caps a single response
+ * (1000 rows by default), which the growing curriculum would otherwise exceed. */
+async function scanIds(table: string, apply: (q: any) => any): Promise<string[]> {
+  const PAGE = 500;
+  const ids: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await apply(db.from(table).select('id')).range(from, from + PAGE - 1);
+    if (error) throw new Error(`wipe scan ${table}: ${error.message}`);
+    ids.push(...(data ?? []).map((r: { id: string }) => r.id));
+    if (!data || data.length < PAGE) break;
+  }
+  return ids;
+}
+
+/**
  * Remove the previously-seeded course and everything under it. This also clears
  * learner rows that reference the old content (answer_logs, mastery, progress),
  * so re-seeding is safe on a database that's already been used — at the cost of
  * resetting progress on the seeded content, which is expected for a seed.
  */
 async function wipe() {
-  const { data: course } = await db.from('courses').select('id').eq('slug', COURSE_SLUG).maybeSingle();
+  const { data: courses } = await db.from('courses').select('id').in('slug', COURSE_SLUGS);
+  const courseIds = (courses ?? []).map((c) => c.id);
 
-  // All seed learning_items (tagged), regardless of course, plus this course's quests.
-  const { data: seedItems } = await db.from('learning_items').select('id').contains('tags', ['seed']);
-  const itemIds = (seedItems ?? []).map((i) => i.id);
+  // All seed learning_items (tagged), regardless of course.
+  const itemIds = await scanIds('learning_items', (q) => q.contains('tags', ['seed']));
 
   let questIds: string[] = [];
   let areaIds: string[] = [];
-  if (course) {
-    const { data: areas } = await db.from('areas').select('id').eq('course_id', course.id);
+  if (courseIds.length) {
+    const { data: areas } = await db.from('areas').select('id').in('course_id', courseIds);
     areaIds = (areas ?? []).map((a) => a.id);
-    if (areaIds.length) {
-      const { data: quests } = await db.from('quests').select('id').in('area_id', areaIds);
-      questIds = (quests ?? []).map((q) => q.id);
+    for (let i = 0; i < areaIds.length; i += DELETE_CHUNK) {
+      const { data: quests } = await db.from('quests').select('id').in('area_id', areaIds.slice(i, i + DELETE_CHUNK));
+      questIds.push(...(quests ?? []).map((q) => q.id));
     }
   }
 
   // 1) Learner data that references seed quests/items (FKs would block deletes).
-  if (questIds.length) {
-    await del('answer_logs', (q) => q.in('quest_id', questIds));
-    await del('user_quest_progress', (q) => q.in('quest_id', questIds));
-  }
-  if (itemIds.length) {
-    await del('answer_logs', (q) => q.in('item_id', itemIds));
-    await del('user_item_mastery', (q) => q.in('item_id', itemIds));
-    await del('quest_items', (q) => q.in('item_id', itemIds));
-  }
+  await delIn('answer_logs', 'quest_id', questIds);
+  await delIn('user_quest_progress', 'quest_id', questIds);
+  await delIn('answer_logs', 'item_id', itemIds);
+  await delIn('user_item_mastery', 'item_id', itemIds);
+  await delIn('quest_items', 'item_id', itemIds);
 
   // 2) Content, inner-to-outer.
   if (questIds.length) {
-    const { data: acts } = await db.from('activities').select('id').in('quest_id', questIds);
-    const actIds = (acts ?? []).map((a) => a.id);
-    if (actIds.length) await del('activity_choices', (q) => q.in('activity_id', actIds));
-    await del('lesson_steps', (q) => q.in('quest_id', questIds));
-    await del('quest_items', (q) => q.in('quest_id', questIds));
-    await del('activities', (q) => q.in('quest_id', questIds));
-    // Break self-referential FK (required_quest_id) before deleting the rows.
-    const { error: nullErr } = await db.from('quests').update({ required_quest_id: null, badge_id: null }).in('id', questIds);
-    if (nullErr) throw new Error(`wipe quests(unlink): ${nullErr.message}`);
-    await del('quests', (q) => q.in('id', questIds));
+    const actIds: string[] = [];
+    for (let i = 0; i < questIds.length; i += DELETE_CHUNK) {
+      const { data: acts } = await db.from('activities').select('id').in('quest_id', questIds.slice(i, i + DELETE_CHUNK));
+      actIds.push(...(acts ?? []).map((a) => a.id));
+    }
+    await delIn('activity_choices', 'activity_id', actIds);
+    await delIn('lesson_steps', 'quest_id', questIds);
+    await delIn('quest_items', 'quest_id', questIds);
+    await delIn('activities', 'quest_id', questIds);
+    // Break the self-referential FK (required_quest_id) before deleting rows.
+    for (let i = 0; i < questIds.length; i += DELETE_CHUNK) {
+      const { error } = await db
+        .from('quests')
+        .update({ required_quest_id: null, badge_id: null })
+        .in('id', questIds.slice(i, i + DELETE_CHUNK));
+      if (error) throw new Error(`wipe quests(unlink): ${error.message}`);
+    }
+    await delIn('quests', 'id', questIds);
   }
-  if (areaIds.length) await del('areas', (q) => q.in('id', areaIds));
-  if (course) await del('courses', (q) => q.eq('id', course.id));
-  if (itemIds.length) await del('learning_items', (q) => q.in('id', itemIds));
+  await delIn('areas', 'id', areaIds);
+  if (courseIds.length) {
+    // Break the self-referential course FK (required_course_id) before deleting.
+    const { error } = await db.from('courses').update({ required_course_id: null }).in('id', courseIds);
+    if (error) throw new Error(`wipe courses(unlink): ${error.message}`);
+    await delIn('courses', 'id', courseIds);
+  }
+  await delIn('learning_items', 'id', itemIds);
 
-  console.log('• wiped prior seed');
+  console.log(`• wiped prior seed (${courseIds.length} courses, ${questIds.length} quests, ${itemIds.length} items)`);
 }
 
 // ---------- generic kana area (hiragana / katakana) ----------
@@ -457,7 +500,10 @@ async function seedFirstConversation(courseId: string) {
 
 // ---------- badges ----------
 async function seedBadges(
-  bosses: { hiragana: string; katakana: string; selfIntro: string; numbers: string; vocab: string; kanji: string; grammar: string },
+  bosses: {
+    hiragana: string; katakana: string; selfIntro: string; numbers: string; vocab: string; kanji: string; grammar: string;
+    n4Vocab: string; n4Kanji: string; n4Grammar: string;
+  },
   firstQuestSlug: string,
 ) {
   const badges = [
@@ -469,6 +515,9 @@ async function seedBadges(
     { slug: 'word-collector', title: 'Word Collector', description: 'Defeated the Vocabulary Boss.', icon_emoji: '📚' },
     { slug: 'kanji-conqueror', title: 'Kanji Conqueror', description: 'Defeated the Kanji Boss.', icon_emoji: '🎋' },
     { slug: 'grammar-guru', title: 'Grammar Guru', description: 'Defeated the Grammar Boss — full N5 complete!', icon_emoji: '🏆' },
+    { slug: 'n4-wordsmith', title: 'N4 Wordsmith', description: 'Defeated the N4 Vocabulary Boss.', icon_emoji: '🗂️' },
+    { slug: 'n4-kanji-master', title: 'N4 Kanji Master', description: 'Defeated the N4 Kanji Boss.', icon_emoji: '🌳' },
+    { slug: 'n4-champion', title: 'N4 Champion', description: 'Defeated the N4 Grammar Boss — full N4 complete!', icon_emoji: '🎌' },
     { slug: 'streak-3', title: 'On a Roll', description: 'Reached a 3-day streak.', icon_emoji: '🔥' },
     { slug: 'streak-7', title: 'Week Warrior', description: 'Reached a 7-day streak.', icon_emoji: '⚡' },
     { slug: 'first-review', title: 'First Battle', description: 'Won your first review battle.', icon_emoji: '🛡️' },
@@ -490,15 +539,19 @@ async function seedBadges(
   await attachId(bosses.vocab, 'word-collector');
   await attachId(bosses.kanji, 'kanji-conqueror');
   await attachId(bosses.grammar, 'grammar-guru'); // the final N5 milestone
+  await attachId(bosses.n4Vocab, 'n4-wordsmith');
+  await attachId(bosses.n4Kanji, 'n4-kanji-master');
+  await attachId(bosses.n4Grammar, 'n4-champion'); // the final N4 milestone
 }
 
 // ---------- generic vocab area (numbers, everyday words) ----------
 async function seedVocabArea(
   courseId: string,
-  cfg: { slug: string; title: string; subtitle: string; icon: string; color: string; sort: number; tag: string },
+  cfg: { slug: string; title: string; subtitle: string; icon: string; color: string; sort: number; tag: string; jlpt?: number },
   themes: VocabTheme[],
   boss: { slug: string; title: string; xp: number },
 ) {
+  const jlpt = cfg.jlpt ?? 5;
   const area = await insert<{ id: string }>('areas', {
     course_id: courseId, slug: cfg.slug, title: cfg.title, subtitle: cfg.subtitle,
     theme_icon: cfg.icon, theme_color: cfg.color, status: 'published', sort_order: cfg.sort,
@@ -520,7 +573,8 @@ async function seedVocabArea(
     for (const w of theme.words) {
       const item = await insert<{ id: string }>('learning_items', {
         item_type: 'vocabulary', japanese_text: w.jp, kana_reading: w.kana, romaji: w.romaji,
-        english_meaning: w.en, tts_text: w.kana, jlpt_level: 5, difficulty: 2, tags: ['seed', cfg.tag], status: 'published',
+        english_meaning: w.en, tts_text: w.kana, jlpt_level: w.jlpt ?? jlpt, difficulty: jlpt <= 4 ? 3 : 2,
+        tags: ['seed', cfg.tag], status: 'published',
       });
       all.push({ jp: w.jp, kana: w.kana, en: w.en, id: item.id });
       await db.from('quest_items').insert({ quest_id: quest.id, item_id: item.id, sort_order: s });
@@ -554,10 +608,18 @@ async function seedVocabArea(
 }
 
 // ---------- kanji area ----------
-async function seedKanjiArea(courseId: string, sort: number, themes: KanjiTheme[]) {
+async function seedKanjiArea(
+  courseId: string,
+  sort: number,
+  themes: KanjiTheme[],
+  cfg: { slug: string; title: string; subtitle: string; icon: string; color: string; tag: string; jlpt: number; bossSlug: string; bossTitle: string; bossXp: number } = {
+    slug: 'kanji-grove', title: 'Kanji Grove', subtitle: 'Your first ~80 kanji', icon: '🎋', color: 'rose',
+    tag: 'kanji', jlpt: 5, bossSlug: 'kanji-boss', bossTitle: 'Kanji Boss', bossXp: 200,
+  },
+) {
   const area = await insert<{ id: string }>('areas', {
-    course_id: courseId, slug: 'kanji-grove', title: 'Kanji Grove', subtitle: 'Your first ~80 kanji',
-    theme_icon: '🎋', theme_color: 'rose', status: 'published', sort_order: sort,
+    course_id: courseId, slug: cfg.slug, title: cfg.title, subtitle: cfg.subtitle,
+    theme_icon: cfg.icon, theme_color: cfg.color, status: 'published', sort_order: sort,
   });
 
   let prev: string | null = null;
@@ -567,7 +629,7 @@ async function seedKanjiArea(courseId: string, sort: number, themes: KanjiTheme[
 
   for (const theme of themes) {
     const quest = await insert<{ id: string }>('quests', {
-      area_id: area.id, slug: `kanji-${theme.slug}`, title: theme.title, learning_goal: theme.goal,
+      area_id: area.id, slug: `${cfg.tag}-${theme.slug}`, title: theme.title, learning_goal: theme.goal,
       quest_type: 'main', xp_reward: 60, required_quest_id: prev,
       skills_trained: ['reading'], status: 'published', sort_order: order++,
     });
@@ -578,7 +640,7 @@ async function seedKanjiArea(courseId: string, sort: number, themes: KanjiTheme[
         item_type: 'kanji', japanese_text: k.kanji, kana_reading: k.kana, romaji: k.romaji,
         english_meaning: k.meaning, tts_text: k.kana, onyomi: k.onyomi, kunyomi: k.kunyomi,
         stroke_count: k.strokes, radical: k.radical, mnemonic_md: k.mnemonic,
-        jlpt_level: 5, difficulty: 3, tags: ['seed', 'kanji'], status: 'published',
+        jlpt_level: cfg.jlpt, difficulty: cfg.jlpt <= 4 ? 4 : 3, tags: ['seed', 'kanji', cfg.tag], status: 'published',
       });
       all.push({ kanji: k.kanji, meaning: k.meaning, kana: k.kana, romaji: k.romaji, id: item.id });
       await db.from('quest_items').insert({ quest_id: quest.id, item_id: item.id, sort_order: s });
@@ -599,8 +661,8 @@ async function seedKanjiArea(courseId: string, sort: number, themes: KanjiTheme[
   }
 
   const bossQuest = await insert<{ id: string }>('quests', {
-    area_id: area.id, slug: 'kanji-boss', title: 'Kanji Boss', learning_goal: 'Read kanji at a glance',
-    quest_type: 'boss', xp_reward: 200, pass_threshold: 0.8, required_quest_id: prev,
+    area_id: area.id, slug: cfg.bossSlug, title: cfg.bossTitle, learning_goal: 'Read kanji at a glance',
+    quest_type: 'boss', xp_reward: cfg.bossXp, pass_threshold: 0.8, required_quest_id: prev,
     skills_trained: ['reading'], status: 'published', sort_order: order,
   });
   const picks = shuffle(all).slice(0, 12);
@@ -613,10 +675,18 @@ async function seedKanjiArea(courseId: string, sort: number, themes: KanjiTheme[
 }
 
 // ---------- grammar area ----------
-async function seedGrammarArea(courseId: string, sort: number, points: GrammarPoint[]) {
+async function seedGrammarArea(
+  courseId: string,
+  sort: number,
+  points: GrammarPoint[],
+  cfg: { slug: string; title: string; subtitle: string; icon: string; color: string; tag: string; jlpt: number; bossSlug: string; bossTitle: string; bossXp: number } = {
+    slug: 'grammar-gate', title: 'Grammar Gate', subtitle: 'Particles & sentence patterns', icon: '⛩️', color: 'indigo',
+    tag: 'grammar', jlpt: 5, bossSlug: 'grammar-boss', bossTitle: 'Grammar Boss', bossXp: 200,
+  },
+) {
   const area = await insert<{ id: string }>('areas', {
-    course_id: courseId, slug: 'grammar-gate', title: 'Grammar Gate', subtitle: 'Particles & sentence patterns',
-    theme_icon: '⛩️', theme_color: 'indigo', status: 'published', sort_order: sort,
+    course_id: courseId, slug: cfg.slug, title: cfg.title, subtitle: cfg.subtitle,
+    theme_icon: cfg.icon, theme_color: cfg.color, status: 'published', sort_order: sort,
   });
 
   let prev: string | null = null;
@@ -624,7 +694,7 @@ async function seedGrammarArea(courseId: string, sort: number, points: GrammarPo
 
   for (const p of points) {
     const quest = await insert<{ id: string }>('quests', {
-      area_id: area.id, slug: `grammar-${p.slug}`, title: p.title, learning_goal: p.goal,
+      area_id: area.id, slug: `${cfg.tag}-${p.slug}`, title: p.title, learning_goal: p.goal,
       quest_type: 'main', xp_reward: 60, required_quest_id: prev,
       skills_trained: ['reading', 'writing'], status: 'published', sort_order: order++,
     });
@@ -633,7 +703,8 @@ async function seedGrammarArea(courseId: string, sort: number, points: GrammarPo
     for (const it of p.items) {
       const item = await insert<{ id: string }>('learning_items', {
         item_type: 'grammar', japanese_text: it.jp, kana_reading: it.kana, romaji: it.romaji,
-        english_meaning: it.en, tts_text: it.kana, jlpt_level: 5, difficulty: 2, tags: ['seed', 'grammar'], status: 'published',
+        english_meaning: it.en, tts_text: it.kana, jlpt_level: cfg.jlpt, difficulty: cfg.jlpt <= 4 ? 3 : 2,
+        tags: ['seed', 'grammar', cfg.tag], status: 'published',
       });
       await db.from('quest_items').insert({ quest_id: quest.id, item_id: item.id, sort_order: s });
     }
@@ -653,8 +724,8 @@ async function seedGrammarArea(courseId: string, sort: number, points: GrammarPo
 
   // Grammar boss: a spread of builders + MC drawn from the points.
   const bossQuest = await insert<{ id: string }>('quests', {
-    area_id: area.id, slug: 'grammar-boss', title: 'Grammar Boss', learning_goal: 'Put the pieces together',
-    quest_type: 'boss', xp_reward: 200, pass_threshold: 0.8, required_quest_id: prev,
+    area_id: area.id, slug: cfg.bossSlug, title: cfg.bossTitle, learning_goal: 'Put the pieces together',
+    quest_type: 'boss', xp_reward: cfg.bossXp, pass_threshold: 0.8, required_quest_id: prev,
     skills_trained: ['reading', 'writing'], status: 'published', sort_order: order,
   });
   let bs = 0;
@@ -673,29 +744,31 @@ async function seedGrammarArea(courseId: string, sort: number, points: GrammarPo
 async function main() {
   await wipe();
 
-  const course = await insert<{ id: string }>('courses', {
-    slug: COURSE_SLUG, title: 'Japanese Zero to Hero',
-    description: 'Start from absolute zero and grow into a confident reader.', status: 'published', sort_order: 0,
+  // ===== Course 1: JLPT N5 =====
+  const n5 = await insert<{ id: string }>('courses', {
+    slug: 'jlpt-n5', title: 'JLPT N5 — Zero to Beginner',
+    description: 'Start from absolute zero: kana, first words, ~80 kanji and core grammar.',
+    status: 'published', sort_order: 0, jlpt_level: 5, required_course_id: null,
   });
-  console.log('• course created');
+  console.log('• Course: JLPT N5 created');
 
-  const { firstQuestSlug } = await seedStartVillage(course.id);
+  const { firstQuestSlug } = await seedStartVillage(n5.id);
   console.log('• Start Village seeded');
 
-  const hira = await seedKanaRows(course.id, { slug: 'hiragana-forest', title: 'Hiragana Forest', subtitle: 'Master all 46 hiragana', icon: '🌲', color: 'emerald', sort: 1, tag: 'hiragana', rows: HIRAGANA_ROWS });
+  const hira = await seedKanaRows(n5.id, { slug: 'hiragana-forest', title: 'Hiragana Forest', subtitle: 'Master all 46 hiragana', icon: '🌲', color: 'emerald', sort: 1, tag: 'hiragana', rows: HIRAGANA_ROWS });
   const hiraBoss = await kanaBoss(hira.areaId, hira.allChars, { slug: 'hiragana-boss', title: 'Hiragana Boss', xp: 150, requiredQuestId: hira.prevQuestId, sortOrder: hira.sortNext });
   console.log(`• Hiragana Forest seeded (${hira.allChars.length} kana)`);
 
-  const kata = await seedKanaRows(course.id, { slug: 'katakana-gate', title: 'Katakana Gate', subtitle: 'Read foreign words', icon: '🏯', color: 'violet', sort: 2, tag: 'katakana', rows: KATAKANA_ROWS });
+  const kata = await seedKanaRows(n5.id, { slug: 'katakana-gate', title: 'Katakana Gate', subtitle: 'Read foreign words', icon: '🏯', color: 'violet', sort: 2, tag: 'katakana', rows: KATAKANA_ROWS });
   const foreignQuestId = await seedForeignWords(kata.areaId, kata.prevQuestId, kata.sortNext);
   const kataBoss = await kanaBoss(kata.areaId, kata.allChars, { slug: 'katakana-boss', title: 'Katakana Boss', xp: 150, requiredQuestId: foreignQuestId, sortOrder: kata.sortNext + 1 });
   console.log(`• Katakana Gate seeded (${kata.allChars.length} kana + loan words)`);
 
-  const conv = await seedFirstConversation(course.id);
+  const conv = await seedFirstConversation(n5.id);
   console.log('• First Conversation seeded');
 
   const numbers = await seedVocabArea(
-    course.id,
+    n5.id,
     { slug: 'numbers-time', title: 'Numbers & Time', subtitle: 'Count, tell time, name the days', icon: '🕐', color: 'amber', sort: 4, tag: 'numbers' },
     NUMBER_THEMES,
     { slug: 'numbers-boss', title: 'Numbers Boss', xp: 150 },
@@ -703,26 +776,58 @@ async function main() {
   console.log('• Numbers & Time seeded');
 
   const vocab = await seedVocabArea(
-    course.id,
+    n5.id,
     { slug: 'everyday-words', title: 'Everyday Words', subtitle: 'Core N5 vocabulary', icon: '🏘️', color: 'teal', sort: 5, tag: 'vocab' },
     VOCAB_THEMES,
     { slug: 'vocab-boss', title: 'Vocabulary Boss', xp: 200 },
   );
   console.log('• Everyday Words seeded');
 
-  const kanji = await seedKanjiArea(course.id, 6, KANJI_THEMES);
+  const kanji = await seedKanjiArea(n5.id, 6, KANJI_THEMES);
   console.log('• Kanji Grove seeded');
 
-  const grammar = await seedGrammarArea(course.id, 7, GRAMMAR_POINTS);
-  console.log('• Grammar Gate seeded');
+  const grammar = await seedGrammarArea(n5.id, 7, GRAMMAR_POINTS);
+  console.log('• Grammar Gate seeded — N5 course complete');
+
+  // ===== Course 2: JLPT N4 (unlocked once N5 is cleared) =====
+  const n4 = await insert<{ id: string }>('courses', {
+    slug: 'jlpt-n4', title: 'JLPT N4 — Beginner to Elementary',
+    description: '~140 more kanji, ~180 words, and the grammar backbone: て-form, conditionals, passive, causative and keigo.',
+    status: 'published', sort_order: 1, jlpt_level: 4, required_course_id: n5.id,
+  });
+  console.log('• Course: JLPT N4 created');
+
+  const n4Vocab = await seedVocabArea(
+    n4.id,
+    { slug: 'n4-words', title: 'N4 Words', subtitle: 'Vocabulary for real conversations', icon: '🗂️', color: 'cyan', sort: 0, tag: 'n4-vocab', jlpt: 4 },
+    N4_VOCAB_THEMES,
+    { slug: 'n4-vocab-boss', title: 'N4 Vocabulary Boss', xp: 250 },
+  );
+  console.log('• N4 Words seeded');
+
+  const n4Kanji = await seedKanjiArea(n4.id, 1, N4_KANJI_THEMES, {
+    slug: 'n4-kanji-forest', title: 'N4 Kanji Forest', subtitle: '~140 more kanji', icon: '🌳', color: 'lime',
+    tag: 'n4-kanji', jlpt: 4, bossSlug: 'n4-kanji-boss', bossTitle: 'N4 Kanji Boss', bossXp: 300,
+  });
+  console.log('• N4 Kanji Forest seeded');
+
+  const n4Grammar = await seedGrammarArea(n4.id, 2, N4_GRAMMAR_POINTS, {
+    slug: 'n4-grammar-temple', title: 'N4 Grammar Temple', subtitle: 'て-form, conditionals, passive & keigo', icon: '🏯', color: 'orange',
+    tag: 'n4-grammar', jlpt: 4, bossSlug: 'n4-grammar-boss', bossTitle: 'N4 Grammar Boss', bossXp: 300,
+  });
+  console.log('• N4 Grammar Temple seeded — N4 course complete');
 
   await seedBadges(
-    { hiragana: hiraBoss, katakana: kataBoss, selfIntro: conv.bossId, numbers: numbers.bossId, vocab: vocab.bossId, kanji: kanji.bossId, grammar: grammar.bossId },
+    {
+      hiragana: hiraBoss, katakana: kataBoss, selfIntro: conv.bossId, numbers: numbers.bossId,
+      vocab: vocab.bossId, kanji: kanji.bossId, grammar: grammar.bossId,
+      n4Vocab: n4Vocab.bossId, n4Kanji: n4Kanji.bossId, n4Grammar: n4Grammar.bossId,
+    },
     firstQuestSlug,
   );
   console.log('• badges seeded');
 
-  console.log('\n✅ Seed complete — full JLPT N5 curriculum. Sign in and head to the Roadmap!');
+  console.log('\n✅ Seed complete — JLPT N5 & N4 as separate courses. Sign in and head to the Roadmap!');
 }
 
 main().catch((e) => {

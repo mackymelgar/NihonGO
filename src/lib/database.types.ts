@@ -81,6 +81,8 @@ export type CourseRow = {
   description: string | null;
   status: ContentStatus;
   sort_order: number;
+  jlpt_level: number | null;
+  required_course_id: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

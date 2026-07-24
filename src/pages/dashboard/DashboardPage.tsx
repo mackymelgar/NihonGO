@@ -26,7 +26,10 @@ export default function DashboardPage() {
 
   const nextQuest = useMemo(() => {
     if (!roadmap) return null;
-    const ordered = roadmap.areas.flatMap((a) => a.quests.map((q) => ({ quest: q, area: a })));
+    // Flatten quests in course → area → quest order (courses are sorted).
+    const ordered = roadmap.courses.flatMap((c) =>
+      c.areas.flatMap((a) => a.quests.map((q) => ({ quest: q, area: a }))),
+    );
     const inProgress = ordered.find(({ quest }) => roadmap.progressByQuest.get(quest.id)?.status === 'in_progress');
     if (inProgress) return inProgress;
     return (
@@ -38,9 +41,13 @@ export default function DashboardPage() {
 
   const nextLockedArea = useMemo(() => {
     if (!roadmap) return null;
-    const idx = roadmap.areas.findIndex((a) => !a.unlocked);
-    if (idx <= 0) return null;
-    return { area: roadmap.areas[idx], prev: roadmap.areas[idx - 1] };
+    // The first still-locked area within any unlocked course.
+    for (const course of roadmap.courses) {
+      if (!course.unlocked) continue;
+      const idx = course.areas.findIndex((a) => !a.unlocked);
+      if (idx > 0) return { area: course.areas[idx], prev: course.areas[idx - 1] };
+    }
+    return null;
   }, [roadmap]);
 
   if (isLoading) return <LoadingState />;
@@ -90,7 +97,7 @@ export default function DashboardPage() {
             Start <ArrowRight className="h-4 w-4" />
           </span>
         </button>
-      ) : roadmap && roadmap.areas.length > 0 ? (
+      ) : roadmap && roadmap.courses.length > 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-black/10 p-6 text-center dark:border-white/15">
           <PartyPopper className="mx-auto mb-2 h-8 w-8 text-accent" />
           <p className="text-lg font-bold">All caught up!</p>

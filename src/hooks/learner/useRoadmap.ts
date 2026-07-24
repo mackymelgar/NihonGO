@@ -10,13 +10,29 @@ export type RoadmapArea = AreaRow & {
   progress: { done: number; total: number; fraction: number };
 };
 
-export type Roadmap = {
-  course: CourseRow | null;
+export type RoadmapCourse = CourseRow & {
   areas: RoadmapArea[];
+  /** The course is playable (its prerequisite course, if any, is complete). */
+  unlocked: boolean;
+  /** Every boss in the course has been passed. */
+  complete: boolean;
+  progress: { done: number; total: number; fraction: number };
+};
+
+export type Roadmap = {
+  courses: RoadmapCourse[];
   completedQuestIds: Set<string>;
+  /** Effective unlock per quest (course gating already applied). */
   questUnlocked: Map<string, boolean>;
   progressByQuest: Map<string, UserQuestProgressRow>;
 };
+
+function courseProgress(quests: QuestRow[], completed: Set<string>) {
+  const gating = quests.filter((q) => q.quest_type !== 'side');
+  const total = gating.length;
+  const done = gating.filter((q) => completed.has(q.id)).length;
+  return { done, total, fraction: total === 0 ? 0 : done / total };
+}
 
 export function useRoadmap() {
   const { user } = useAuth();
@@ -40,26 +56,49 @@ export function useRoadmap() {
         progress.data.filter((p) => p.status === 'completed').map((p) => p.quest_id),
       );
 
-      const { areaUnlocked, questUnlocked } = computeUnlocks({
-        areas: areas.data,
-        quests: quests.data,
-        completedQuestIds,
-      });
+      const questUnlocked = new Map<string, boolean>();
+      const completeByCourse = new Map<string, boolean>();
+      const roadmapCourses: RoadmapCourse[] = [];
 
-      const roadmapAreas: RoadmapArea[] = areas.data.map((area) => ({
-        ...area,
-        quests: quests.data.filter((q) => q.area_id === area.id),
-        unlocked: areaUnlocked.get(area.id) ?? false,
-        progress: areaProgress(area.id, quests.data, completedQuestIds),
-      }));
+      // Courses are processed in sort order so a prerequisite's completion is
+      // known before the course that depends on it.
+      for (const course of courses.data) {
+        const courseAreas = areas.data.filter((a) => a.course_id === course.id);
+        const areaIds = new Set(courseAreas.map((a) => a.id));
+        const courseQuests = quests.data.filter((q) => areaIds.has(q.area_id));
 
-      return {
-        course: courses.data[0] ?? null,
-        areas: roadmapAreas,
-        completedQuestIds,
-        questUnlocked,
-        progressByQuest,
-      };
+        const { areaUnlocked, questUnlocked: within } = computeUnlocks({
+          areas: courseAreas,
+          quests: courseQuests,
+          completedQuestIds,
+        });
+
+        const bosses = courseQuests.filter((q) => q.quest_type === 'boss');
+        const complete = bosses.length > 0 && bosses.every((b) => completedQuestIds.has(b.id));
+        completeByCourse.set(course.id, complete);
+
+        const unlocked = !course.required_course_id || (completeByCourse.get(course.required_course_id) ?? false);
+
+        // Apply course gating to every quest's effective unlock.
+        for (const q of courseQuests) {
+          questUnlocked.set(q.id, unlocked && (within.get(q.id) ?? false));
+        }
+
+        roadmapCourses.push({
+          ...course,
+          unlocked,
+          complete,
+          progress: courseProgress(courseQuests, completedQuestIds),
+          areas: courseAreas.map((area) => ({
+            ...area,
+            quests: courseQuests.filter((q) => q.area_id === area.id),
+            unlocked: unlocked && (areaUnlocked.get(area.id) ?? false),
+            progress: areaProgress(area.id, courseQuests, completedQuestIds),
+          })),
+        });
+      }
+
+      return { courses: roadmapCourses, completedQuestIds, questUnlocked, progressByQuest };
     },
   });
 }
