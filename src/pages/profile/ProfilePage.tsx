@@ -43,6 +43,65 @@ export default function ProfilePage() {
 
       <ProfileAnalytics />
 
+      {/* About Section */}
+      <section className="flex flex-col gap-4 rounded-2xl bg-white/60 p-6 dark:bg-white/5">
+        <h2 className="text-xl font-bold">About NihonGO (100% FREE)</h2>
+        
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold flex items-center gap-2">📚 Smart Practice</h3>
+          <p className="text-sm text-ink-muted">
+            Master Hiragana, Katakana, Kanji, Vocabulary, and Grammar with interactive flashcards and dynamic exercises.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold flex items-center gap-2">📝 Quests & Boss Battles</h3>
+          <p className="text-sm text-ink-muted">
+            Take on challenging quests to test your knowledge. Defeat bosses to unlock new areas and progress on the roadmap!
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold flex items-center gap-2">📊 Progress Dashboard</h3>
+          <p className="text-sm text-ink-muted">
+            Track your XP, current level, daily streak, and mastery of Japanese items as you study.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold flex items-center gap-2">📱 Works on Any Device</h3>
+          <p className="text-sm text-ink-muted">
+            No app required. Works perfectly on your mobile, tablet, and laptop. Built for on-the-go review sessions.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold flex items-center gap-2">🔐 Save Your Progress</h3>
+          <p className="text-sm text-ink-muted">
+            Create an optional account to save your progress, XP, and streak across all devices. Your data stays private and secure.
+          </p>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-2xl bg-amber-100 p-6 dark:bg-amber-900/20">
+        <h2 className="text-xl font-bold text-amber-900 dark:text-amber-200">⚠️ Disclaimer</h2>
+        <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
+          I don't claim 100% accuracy. All content was compiled, rewritten, and adapted from various free resources. This platform is meant to supplement your Japanese study materials, not replace official preparation resources.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-2xl bg-white/60 p-6 dark:bg-white/5">
+        <h2 className="text-xl font-bold">Get in Touch</h2>
+        <div className="flex flex-col gap-1 text-sm text-ink-muted">
+          <p className="font-semibold text-ink">Founder</p>
+          <p>Edre Mark N. Melgar</p>
+          <p>Mindanao, Philippines</p>
+          <a href="mailto:melgarmacky@gmail.com" className="text-accent hover:underline">
+            melgarmacky@gmail.com
+          </a>
+        </div>
+      </section>
+
       {/* Settings */}
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold">Settings</h2>
