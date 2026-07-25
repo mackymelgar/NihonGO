@@ -27,43 +27,15 @@ export type UnlockResult = {
  * The first area is always unlocked. If a prior area has no boss, it must be
  * fully completed (all non-side quests) to open the next.
  */
-export function computeUnlocks({ areas, quests, completedQuestIds, knows_japanese }: UnlockInput): UnlockResult {
-  const sortedAreas = [...areas].sort((a, b) => a.sort_order - b.sort_order);
-  const questsByArea = new Map<string, UnlockQuest[]>();
-  for (const q of quests) {
-    const list = questsByArea.get(q.area_id) ?? [];
-    list.push(q);
-    questsByArea.set(q.area_id, list);
-  }
-
+export function computeUnlocks({ areas, quests }: UnlockInput): UnlockResult {
   const areaUnlocked = new Map<string, boolean>();
-  let prevAreaCleared: boolean = true; // nothing precedes the first area
-  for (let i = 0; i < sortedAreas.length; i++) {
-    const area = sortedAreas[i];
-    const unlocked: boolean = true; // Always open
-    areaUnlocked.set(area.id, unlocked);
-
-    // Is THIS area "cleared" (so the next one opens)?
-    const areaQuests = questsByArea.get(area.id) ?? [];
-    const bosses = areaQuests.filter((q) => q.quest_type === 'boss');
-    if (bosses.length > 0) {
-      prevAreaCleared = unlocked && bosses.every((b) => completedQuestIds.has(b.id));
-    } else {
-      const gating = areaQuests.filter((q) => q.quest_type !== 'side');
-      prevAreaCleared =
-        unlocked && gating.length > 0 && gating.every((q) => completedQuestIds.has(q.id));
-    }
+  for (const area of areas) {
+    areaUnlocked.set(area.id, true);
   }
 
   const questUnlocked = new Map<string, boolean>();
   for (const q of quests) {
-    const areaOpen = areaUnlocked.get(q.area_id) ?? false;
-    if (!areaOpen) {
-      questUnlocked.set(q.id, false);
-      continue;
-    }
-    const prereqMet = true; // Always open
-    questUnlocked.set(q.id, prereqMet);
+    questUnlocked.set(q.id, true);
   }
 
   return { areaUnlocked, questUnlocked };
