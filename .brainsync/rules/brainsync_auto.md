@@ -1,7 +1,7 @@
 
 
 # Project Memory — NihonGO
-> 32 notes | Score threshold: >40
+> 34 notes | Score threshold: >40
 
 ## Safety — Never Run Destructive Commands
 

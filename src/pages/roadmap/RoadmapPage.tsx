@@ -7,7 +7,9 @@ import { CoachMarks } from '@/components/CoachMarks';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
 
-const levelLabel = (c: RoadmapCourse) => (c.jlpt_level ? `N${c.jlpt_level}` : c.title.slice(0, 6));
+// Short tier label for the course switcher pills (by difficulty, easiest first).
+const TIER_PILL: Record<number, string> = { 5: 'Beginner', 4: 'Elementary', 3: 'Intermediate', 2: 'Upper-Int.', 1: 'Advanced' };
+const levelLabel = (c: RoadmapCourse) => (c.jlpt_level ? (TIER_PILL[c.jlpt_level] ?? c.title) : c.title);
 
 export default function RoadmapPage() {
   const { data, isLoading, isError, refetch } = useRoadmap();

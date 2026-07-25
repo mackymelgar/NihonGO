@@ -1,0 +1,85 @@
+import type { KanjiTheme } from './types';
+
+/** JLPT N1 kanji (~45) — advanced and literary. onyomi in katakana, kunyomi in
+ * hiragana. No overlap with lower levels. */
+export const N1_KANJI_THEMES: KanjiTheme[] = [
+  {
+    slug: 'n1-mind',
+    title: 'Mind & discernment',
+    goal: 'Advanced kanji for thought and judgement',
+    kanji: [
+      { kanji: '慮', meaning: 'consideration / prudence', kana: 'りょ', romaji: 'ryo', onyomi: 'リョ', kunyomi: '', strokes: 15, radical: '心', mnemonic: 'A weighty thought pressing on the heart (心).' },
+      { kanji: '慎', meaning: 'be discreet / careful', kana: 'つつし', romaji: 'tsutsushi', onyomi: 'シン', kunyomi: 'つつし', strokes: 13, radical: '忄', mnemonic: 'A true (真) heart (忄) — prudence.' },
+      { kanji: '択', meaning: 'select / choose', kana: 'たく', romaji: 'taku', onyomi: 'タク', kunyomi: '', strokes: 7, radical: '扌', mnemonic: 'A hand (扌) picking one out.' },
+      { kanji: '把', meaning: 'grasp / handful', kana: 'は', romaji: 'ha', onyomi: 'ハ', kunyomi: '', strokes: 7, radical: '扌', mnemonic: 'A hand (扌) taking firm hold.' },
+      { kanji: '促', meaning: 'urge / prompt', kana: 'うなが', romaji: 'unaga', onyomi: 'ソク', kunyomi: 'うなが', strokes: 9, radical: '亻', mnemonic: 'A person (亻) at your feet (足) hurrying you.' },
+      { kanji: '駆', meaning: 'drive / gallop', kana: 'か', romaji: 'ka', onyomi: 'ク', kunyomi: 'か', strokes: 14, radical: '馬', mnemonic: 'A horse (馬) at a gallop.' },
+      { kanji: '妥', meaning: 'compromise / gentle', kana: 'だ', romaji: 'da', onyomi: 'ダ', kunyomi: '', strokes: 7, radical: '女', mnemonic: 'A calming hand over a woman (女) — settling.' },
+      { kanji: '徹', meaning: 'penetrate / thorough', kana: 'てつ', romaji: 'tetsu', onyomi: 'テツ', kunyomi: '', strokes: 15, radical: '彳', mnemonic: 'Going (彳) all the way through.' },
+      { kanji: '悟', meaning: 'perceive / enlighten', kana: 'さと', romaji: 'sato', onyomi: 'ゴ', kunyomi: 'さと', strokes: 10, radical: '忄', mnemonic: 'The heart (忄) reaches its own (吾) truth.' },
+    ],
+  },
+  {
+    slug: 'n1-law',
+    title: 'Law & formal writing',
+    goal: 'Kanji from legal and official texts',
+    kanji: [
+      { kanji: '暫', meaning: 'temporary / for a while', kana: 'ざん', romaji: 'zan', onyomi: 'ザン', kunyomi: '', strokes: 15, radical: '日', mnemonic: 'A brief slice of days (日).' },
+      { kanji: '款', meaning: 'clause / goodwill', kana: 'かん', romaji: 'kan', onyomi: 'カン', kunyomi: '', strokes: 12, radical: '欠', mnemonic: 'A formal article, sincerely offered.' },
+      { kanji: '却', meaning: 'reject / withdraw', kana: 'きゃく', romaji: 'kyaku', onyomi: 'キャク', kunyomi: '', strokes: 7, radical: '卩', mnemonic: 'Sending it back down.' },
+      { kanji: '施', meaning: 'carry out / bestow', kana: 'し', romaji: 'shi', onyomi: 'シ・セ', kunyomi: 'ほどこ', strokes: 9, radical: '方', mnemonic: 'A banner (方) raised — putting into effect.' },
+      { kanji: '審', meaning: 'examine / judge', kana: 'しん', romaji: 'shin', onyomi: 'シン', kunyomi: '', strokes: 15, radical: '宀', mnemonic: 'Scrutinizing a field (番) under a roof (宀).' },
+      { kanji: '措', meaning: 'measure / dispose', kana: 'そ', romaji: 'so', onyomi: 'ソ', kunyomi: '', strokes: 11, radical: '扌', mnemonic: 'A hand (扌) placing things in order.' },
+      { kanji: '該', meaning: 'the said / applicable', kana: 'がい', romaji: 'gai', onyomi: 'ガイ', kunyomi: '', strokes: 13, radical: '言', mnemonic: 'Words (言) pointing to the very one.' },
+      { kanji: '需', meaning: 'demand / need', kana: 'じゅ', romaji: 'ju', onyomi: 'ジュ', kunyomi: '', strokes: 14, radical: '雨', mnemonic: 'Rain (雨) that is needed.' },
+      { kanji: '阻', meaning: 'obstruct / thwart', kana: 'はば', romaji: 'haba', onyomi: 'ソ', kunyomi: 'はば', strokes: 8, radical: '阝', mnemonic: 'A wall (阝) blocking the way.' },
+    ],
+  },
+  {
+    slug: 'n1-abstract',
+    title: 'Abstract & degree',
+    goal: 'Kanji for nuance and extent',
+    kanji: [
+      { kanji: '概', meaning: 'general / outline', kana: 'がい', romaji: 'gai', onyomi: 'ガイ', kunyomi: '', strokes: 14, radical: '木', mnemonic: 'A rough measure struck off a tree (木).' },
+      { kanji: '顕', meaning: 'evident / manifest', kana: 'けん', romaji: 'ken', onyomi: 'ケン', kunyomi: '', strokes: 18, radical: '頁', mnemonic: 'Plain to the head (頁) — obvious.' },
+      { kanji: '融', meaning: 'melt / finance', kana: 'ゆう', romaji: 'yuu', onyomi: 'ユウ', kunyomi: '', strokes: 16, radical: '虫', mnemonic: 'Things flowing and merging.' },
+      { kanji: '循', meaning: 'circulate', kana: 'じゅん', romaji: 'jun', onyomi: 'ジュン', kunyomi: '', strokes: 12, radical: '彳', mnemonic: 'Going (彳) round in a loop.' },
+      { kanji: '欲', meaning: 'desire / greed', kana: 'ほっ', romaji: 'ho', onyomi: 'ヨク', kunyomi: 'ほっ・ほ', strokes: 11, radical: '欠', mnemonic: 'A valley (谷) of wants, yawning (欠).' },
+      { kanji: '幻', meaning: 'illusion / phantom', kana: 'まぼろし', romaji: 'maboroshi', onyomi: 'ゲン', kunyomi: 'まぼろし', strokes: 4, radical: '幺', mnemonic: 'A thread of something not quite real.' },
+      { kanji: '尽', meaning: 'exhaust / all', kana: 'つ', romaji: 'tsu', onyomi: 'ジン', kunyomi: 'つ', strokes: 6, radical: '尸', mnemonic: 'Used down to the last drop.' },
+      { kanji: '瞬', meaning: 'blink / instant', kana: 'しゅん', romaji: 'shun', onyomi: 'シュン', kunyomi: 'またた', strokes: 18, radical: '目', mnemonic: 'The eye (目) in a single blink.' },
+      { kanji: '矛', meaning: 'halberd / contradiction', kana: 'む', romaji: 'mu', onyomi: 'ム', kunyomi: 'ほこ', strokes: 5, radical: '矛', mnemonic: 'A spear — half of a contradiction (矛盾).' },
+      { kanji: '盾', meaning: 'shield', kana: 'じゅん', romaji: 'jun', onyomi: 'ジュン', kunyomi: 'たて', strokes: 9, radical: '目', mnemonic: 'A shield raised before the eye (目).' },
+    ],
+  },
+  {
+    slug: 'n1-character',
+    title: 'Character & feeling',
+    goal: 'Kanji for temperament and emotion',
+    kanji: [
+      { kanji: '愚', meaning: 'foolish', kana: 'おろ', romaji: 'oro', onyomi: 'グ', kunyomi: 'おろ', strokes: 13, radical: '心', mnemonic: 'A dull heart (心).' },
+      { kanji: '嫌', meaning: 'dislike / disagreeable', kana: 'きら', romaji: 'kira', onyomi: 'ケン・ゲン', kunyomi: 'きら・いや', strokes: 13, radical: '女', mnemonic: 'A feeling one would rather avoid.' },
+      { kanji: '克', meaning: 'overcome', kana: 'こく', romaji: 'koku', onyomi: 'コク', kunyomi: '', strokes: 7, radical: '儿', mnemonic: 'A person (儿) surmounting a burden.' },
+      { kanji: '恒', meaning: 'constant / always', kana: 'こう', romaji: 'kou', onyomi: 'コウ', kunyomi: '', strokes: 9, radical: '忄', mnemonic: 'A heart (忄) that stays the same.' },
+      { kanji: '妨', meaning: 'hinder / disturb', kana: 'さまた', romaji: 'samata', onyomi: 'ボウ', kunyomi: 'さまた', strokes: 7, radical: '女', mnemonic: 'Something standing in the way (方).' },
+      { kanji: '慢', meaning: 'pride / ridicule / slow', kana: 'まん', romaji: 'man', onyomi: 'マン', kunyomi: '', strokes: 14, radical: '忄', mnemonic: 'A heart (忄) dragging (曼) — arrogance.' },
+      { kanji: '憂', meaning: 'grief / anxiety', kana: 'うれ', romaji: 'ure', onyomi: 'ユウ', kunyomi: 'うれ・う', strokes: 15, radical: '心', mnemonic: 'A heavy head and a sinking heart (心).' },
+      { kanji: '憎', meaning: 'hate / detest', kana: 'にく', romaji: 'niku', onyomi: 'ゾウ', kunyomi: 'にく', strokes: 14, radical: '忄', mnemonic: 'A heart (忄) that keeps adding (曽) resentment.' },
+    ],
+  },
+  {
+    slug: 'n1-action',
+    title: 'Advanced actions',
+    goal: 'Kanji from literary verbs',
+    kanji: [
+      { kanji: '遂', meaning: 'accomplish / at last', kana: 'と', romaji: 'to', onyomi: 'スイ', kunyomi: 'と', strokes: 12, radical: '辶', mnemonic: 'Following through (辶) to the end.' },
+      { kanji: '潜', meaning: 'submerge / hide', kana: 'ひそ', romaji: 'hiso', onyomi: 'セン', kunyomi: 'ひそ・もぐ', strokes: 15, radical: '氵', mnemonic: 'Slipping beneath the water (氵).' },
+      { kanji: '陥', meaning: 'fall into / defect', kana: 'おちい', romaji: 'ochii', onyomi: 'カン', kunyomi: 'おちい・おとしい', strokes: 10, radical: '阝', mnemonic: 'Sliding down a pit by the wall (阝).' },
+      { kanji: '貫', meaning: 'pierce / carry through', kana: 'つらぬ', romaji: 'tsuranu', onyomi: 'カン', kunyomi: 'つらぬ', strokes: 11, radical: '貝', mnemonic: 'Running a thread straight through coins (貝).' },
+      { kanji: '携', meaning: 'carry / take part', kana: 'たずさ', romaji: 'tazusa', onyomi: 'ケイ', kunyomi: 'たずさ', strokes: 13, radical: '扌', mnemonic: 'A hand (扌) carrying something along.' },
+      { kanji: '掲', meaning: 'put up / publish', kana: 'かか', romaji: 'kaka', onyomi: 'ケイ', kunyomi: 'かか', strokes: 11, radical: '扌', mnemonic: 'A hand (扌) raising a notice.' },
+      { kanji: '網', meaning: 'net / network', kana: 'あみ', romaji: 'ami', onyomi: 'モウ', kunyomi: 'あみ', strokes: 14, radical: '糸', mnemonic: 'A mesh of threads (糸).' },
+      { kanji: '覆', meaning: 'cover / overturn', kana: 'おお', romaji: 'oo', onyomi: 'フク', kunyomi: 'おお・くつがえ', strokes: 18, radical: '襾', mnemonic: 'A lid laid over the top.' },
+    ],
+  },
+];

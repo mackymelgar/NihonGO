@@ -21,6 +21,15 @@ import { GRAMMAR_POINTS } from './data/grammar';
 import { N4_KANJI_THEMES } from './data/n4-kanji';
 import { N4_VOCAB_THEMES } from './data/n4-vocab';
 import { N4_GRAMMAR_POINTS } from './data/n4-grammar';
+import { N3_KANJI_THEMES } from './data/n3-kanji';
+import { N3_VOCAB_THEMES } from './data/n3-vocab';
+import { N3_GRAMMAR_POINTS } from './data/n3-grammar';
+import { N2_KANJI_THEMES } from './data/n2-kanji';
+import { N2_VOCAB_THEMES } from './data/n2-vocab';
+import { N2_GRAMMAR_POINTS } from './data/n2-grammar';
+import { N1_KANJI_THEMES } from './data/n1-kanji';
+import { N1_VOCAB_THEMES } from './data/n1-vocab';
+import { N1_GRAMMAR_POINTS } from './data/n1-grammar';
 import type { GrammarPoint, KanjiTheme, VocabTheme } from './data/types';
 
 const url = process.env.VITE_SUPABASE_URL;
@@ -33,7 +42,7 @@ if (!url || !serviceKey) {
 const db = createClient(url, serviceKey, { auth: { persistSession: false } });
 // Every course this seed owns (includes the legacy single-course slug so old
 // data is cleaned up on re-seed).
-const COURSE_SLUGS = ['japanese-zero-to-hero', 'jlpt-n5', 'jlpt-n4'];
+const COURSE_SLUGS = ['japanese-zero-to-hero', 'jlpt-n5', 'jlpt-n4', 'jlpt-n3', 'jlpt-n2', 'jlpt-n1'];
 
 // ---------- low-level helpers ----------
 async function insert<T = any>(table: string, row: Record<string, unknown>): Promise<T> {
@@ -253,7 +262,7 @@ async function seedKanaRows(
   const allChars: [string, string, string][] = []; // [kana, romaji, itemId]
 
   for (const row of cfg.rows) {
-    const quest = await insert<{ id: string }>('quests', {
+    const quest: { id: string } = await insert<{ id: string }>('quests', {
       area_id: area.id,
       slug: `${cfg.tag}-${row.slug}`,
       title: `${cfg.title}: ${row.title}`,
@@ -322,7 +331,7 @@ async function seedStartVillage(courseId: string) {
 
   let prev: string | null = null;
   async function q(slug: string, title: string, goal: string, paras: string[], quiz: { prompt: string; correct: string; distractors: string[] }, sort: number, isBoss = false) {
-    const quest = await insert<{ id: string }>('quests', {
+    const quest: { id: string } = await insert<{ id: string }>('quests', {
       area_id: area.id, slug, title, learning_goal: goal,
       quest_type: isBoss ? 'boss' : 'main', xp_reward: isBoss ? 80 : 40,
       pass_threshold: isBoss ? 0.75 : 0.8, required_quest_id: prev,
@@ -408,7 +417,7 @@ async function seedFirstConversation(courseId: string) {
   let sort = 0;
 
   async function phraseQuest(slug: string, title: string, goal: string, phrases: [string, string, string][]) {
-    const quest = await insert<{ id: string }>('quests', {
+    const quest: { id: string } = await insert<{ id: string }>('quests', {
       area_id: area.id, slug, title, learning_goal: goal, quest_type: 'main', xp_reward: 55,
       required_quest_id: prev, skills_trained: ['reading', 'listening'], status: 'published', sort_order: sort++,
     });
@@ -503,6 +512,7 @@ async function seedBadges(
   bosses: {
     hiragana: string; katakana: string; selfIntro: string; numbers: string; vocab: string; kanji: string; grammar: string;
     n4Vocab: string; n4Kanji: string; n4Grammar: string;
+    n3Grammar: string; n2Grammar: string; n1Grammar: string;
   },
   firstQuestSlug: string,
 ) {
@@ -514,10 +524,13 @@ async function seedBadges(
     { slug: 'number-ninja', title: 'Number Ninja', description: 'Defeated the Numbers Boss.', icon_emoji: '🔢' },
     { slug: 'word-collector', title: 'Word Collector', description: 'Defeated the Vocabulary Boss.', icon_emoji: '📚' },
     { slug: 'kanji-conqueror', title: 'Kanji Conqueror', description: 'Defeated the Kanji Boss.', icon_emoji: '🎋' },
-    { slug: 'grammar-guru', title: 'Grammar Guru', description: 'Defeated the Grammar Boss — full N5 complete!', icon_emoji: '🏆' },
-    { slug: 'n4-wordsmith', title: 'N4 Wordsmith', description: 'Defeated the N4 Vocabulary Boss.', icon_emoji: '🗂️' },
-    { slug: 'n4-kanji-master', title: 'N4 Kanji Master', description: 'Defeated the N4 Kanji Boss.', icon_emoji: '🌳' },
-    { slug: 'n4-champion', title: 'N4 Champion', description: 'Defeated the N4 Grammar Boss — full N4 complete!', icon_emoji: '🎌' },
+    { slug: 'grammar-guru', title: 'Grammar Guru', description: 'Completed the Beginner course!', icon_emoji: '🏆' },
+    { slug: 'n4-wordsmith', title: 'Wordsmith', description: 'Defeated the Elementary Vocabulary Boss.', icon_emoji: '🗂️' },
+    { slug: 'n4-kanji-master', title: 'Kanji Apprentice', description: 'Defeated the Elementary Kanji Boss.', icon_emoji: '🌳' },
+    { slug: 'n4-champion', title: 'Elementary Champion', description: 'Completed the Elementary course!', icon_emoji: '🎌' },
+    { slug: 'n3-champion', title: 'Intermediate Champion', description: 'Completed the Intermediate course!', icon_emoji: '🌸' },
+    { slug: 'n2-champion', title: 'Upper-Intermediate Champion', description: 'Completed the Upper-Intermediate course!', icon_emoji: '🍁' },
+    { slug: 'n1-champion', title: 'Advanced Champion', description: 'Completed the Advanced course — you did it!', icon_emoji: '🐉' },
     { slug: 'streak-3', title: 'On a Roll', description: 'Reached a 3-day streak.', icon_emoji: '🔥' },
     { slug: 'streak-7', title: 'Week Warrior', description: 'Reached a 7-day streak.', icon_emoji: '⚡' },
     { slug: 'first-review', title: 'First Battle', description: 'Won your first review battle.', icon_emoji: '🛡️' },
@@ -542,6 +555,9 @@ async function seedBadges(
   await attachId(bosses.n4Vocab, 'n4-wordsmith');
   await attachId(bosses.n4Kanji, 'n4-kanji-master');
   await attachId(bosses.n4Grammar, 'n4-champion'); // the final N4 milestone
+  await attachId(bosses.n3Grammar, 'n3-champion');
+  await attachId(bosses.n2Grammar, 'n2-champion');
+  await attachId(bosses.n1Grammar, 'n1-champion');
 }
 
 // ---------- generic vocab area (numbers, everyday words) ----------
@@ -563,7 +579,7 @@ async function seedVocabArea(
   const allMeanings = themes.flatMap((t) => t.words.map((w) => w.en));
 
   for (const theme of themes) {
-    const quest = await insert<{ id: string }>('quests', {
+    const quest: { id: string } = await insert<{ id: string }>('quests', {
       area_id: area.id, slug: `${cfg.tag}-${theme.slug}`, title: theme.title, learning_goal: theme.goal,
       quest_type: 'main', xp_reward: 55, required_quest_id: prev,
       skills_trained: ['reading', 'listening'], status: 'published', sort_order: order++,
@@ -628,7 +644,7 @@ async function seedKanjiArea(
   const allMeanings = themes.flatMap((t) => t.kanji.map((k) => k.meaning));
 
   for (const theme of themes) {
-    const quest = await insert<{ id: string }>('quests', {
+    const quest: { id: string } = await insert<{ id: string }>('quests', {
       area_id: area.id, slug: `${cfg.tag}-${theme.slug}`, title: theme.title, learning_goal: theme.goal,
       quest_type: 'main', xp_reward: 60, required_quest_id: prev,
       skills_trained: ['reading'], status: 'published', sort_order: order++,
@@ -693,7 +709,7 @@ async function seedGrammarArea(
   let order = 0;
 
   for (const p of points) {
-    const quest = await insert<{ id: string }>('quests', {
+    const quest: { id: string } = await insert<{ id: string }>('quests', {
       area_id: area.id, slug: `${cfg.tag}-${p.slug}`, title: p.title, learning_goal: p.goal,
       quest_type: 'main', xp_reward: 60, required_quest_id: prev,
       skills_trained: ['reading', 'writing'], status: 'published', sort_order: order++,
@@ -740,17 +756,55 @@ async function seedGrammarArea(
   return { areaId: area.id, bossId: bossQuest.id };
 }
 
+// ---------- generic advanced JLPT course (N3/N2/N1) ----------
+// Each is one course with three chained areas: Words → Kanji → Grammar.
+async function seedAdvancedCourse(
+  cfg: {
+    slug: string; title: string; tier: string; description: string; jlpt: number; sort: number; requiredCourseId: string;
+    icon: string; wordsColor: string; kanjiColor: string; grammarColor: string;
+    wordsBossXp: number; kanjiBossXp: number; grammarBossXp: number;
+  },
+  data: {
+    vocab: VocabTheme[]; kanji: KanjiTheme[]; grammar: GrammarPoint[];
+  },
+) {
+  const course = await insert<{ id: string }>('courses', {
+    slug: cfg.slug, title: cfg.title, description: cfg.description,
+    status: 'published', sort_order: cfg.sort, jlpt_level: cfg.jlpt, required_course_id: cfg.requiredCourseId,
+  });
+  const tag = `n${cfg.jlpt}`;
+
+  const words = await seedVocabArea(
+    course.id,
+    { slug: `${tag}-words`, title: `${cfg.tier} Words`, subtitle: 'Vocabulary for this level', icon: '🗂️', color: cfg.wordsColor, sort: 0, tag: `${tag}-vocab`, jlpt: cfg.jlpt },
+    data.vocab,
+    { slug: `${tag}-vocab-boss`, title: `${cfg.tier} Vocabulary Boss`, xp: cfg.wordsBossXp },
+  );
+
+  const kanji = await seedKanjiArea(course.id, 1, data.kanji, {
+    slug: `${tag}-kanji-forest`, title: `${cfg.tier} Kanji Forest`, subtitle: 'The kanji of this level', icon: cfg.icon, color: cfg.kanjiColor,
+    tag: `${tag}-kanji`, jlpt: cfg.jlpt, bossSlug: `${tag}-kanji-boss`, bossTitle: `${cfg.tier} Kanji Boss`, bossXp: cfg.kanjiBossXp,
+  });
+
+  const grammar = await seedGrammarArea(course.id, 2, data.grammar, {
+    slug: `${tag}-grammar-temple`, title: `${cfg.tier} Grammar Temple`, subtitle: 'Grammar patterns of this level', icon: '🏯', color: cfg.grammarColor,
+    tag: `${tag}-grammar`, jlpt: cfg.jlpt, bossSlug: `${tag}-grammar-boss`, bossTitle: `${cfg.tier} Grammar Boss`, bossXp: cfg.grammarBossXp,
+  });
+
+  return { courseId: course.id, vocabBoss: words.bossId, kanjiBoss: kanji.bossId, grammarBoss: grammar.bossId };
+}
+
 // ---------- main ----------
 async function main() {
   await wipe();
 
-  // ===== Course 1: JLPT N5 =====
+  // ===== Course 1: Beginner (JLPT N5 scope) =====
   const n5 = await insert<{ id: string }>('courses', {
-    slug: 'jlpt-n5', title: 'JLPT N5 — Zero to Beginner',
-    description: 'Start from absolute zero: kana, first words, ~80 kanji and core grammar.',
+    slug: 'jlpt-n5', title: 'Beginner',
+    description: 'Start from absolute zero: kana, first words, ~80 kanji and core grammar. Follows the JLPT N5 syllabus — a study aid, not the official exam.',
     status: 'published', sort_order: 0, jlpt_level: 5, required_course_id: null,
   });
-  console.log('• Course: JLPT N5 created');
+  console.log('• Course: Beginner created');
 
   const { firstQuestSlug } = await seedStartVillage(n5.id);
   console.log('• Start Village seeded');
@@ -777,7 +831,7 @@ async function main() {
 
   const vocab = await seedVocabArea(
     n5.id,
-    { slug: 'everyday-words', title: 'Everyday Words', subtitle: 'Core N5 vocabulary', icon: '🏘️', color: 'teal', sort: 5, tag: 'vocab' },
+    { slug: 'everyday-words', title: 'Everyday Words', subtitle: 'Core beginner vocabulary', icon: '🏘️', color: 'teal', sort: 5, tag: 'vocab' },
     VOCAB_THEMES,
     { slug: 'vocab-boss', title: 'Vocabulary Boss', xp: 200 },
   );
@@ -789,45 +843,65 @@ async function main() {
   const grammar = await seedGrammarArea(n5.id, 7, GRAMMAR_POINTS);
   console.log('• Grammar Gate seeded — N5 course complete');
 
-  // ===== Course 2: JLPT N4 (unlocked once N5 is cleared) =====
+  // ===== Course 2: Elementary (JLPT N4 scope) =====
   const n4 = await insert<{ id: string }>('courses', {
-    slug: 'jlpt-n4', title: 'JLPT N4 — Beginner to Elementary',
-    description: '~140 more kanji, ~180 words, and the grammar backbone: て-form, conditionals, passive, causative and keigo.',
+    slug: 'jlpt-n4', title: 'Elementary',
+    description: '~140 more kanji, ~180 words, and the grammar backbone: て-form, conditionals, passive, causative and keigo. Follows the JLPT N4 syllabus — a study aid, not the official exam.',
     status: 'published', sort_order: 1, jlpt_level: 4, required_course_id: n5.id,
   });
-  console.log('• Course: JLPT N4 created');
+  console.log('• Course: Elementary created');
 
   const n4Vocab = await seedVocabArea(
     n4.id,
-    { slug: 'n4-words', title: 'N4 Words', subtitle: 'Vocabulary for real conversations', icon: '🗂️', color: 'cyan', sort: 0, tag: 'n4-vocab', jlpt: 4 },
+    { slug: 'n4-words', title: 'Elementary Words', subtitle: 'Vocabulary for real conversations', icon: '🗂️', color: 'cyan', sort: 0, tag: 'n4-vocab', jlpt: 4 },
     N4_VOCAB_THEMES,
-    { slug: 'n4-vocab-boss', title: 'N4 Vocabulary Boss', xp: 250 },
+    { slug: 'n4-vocab-boss', title: 'Elementary Vocabulary Boss', xp: 250 },
   );
-  console.log('• N4 Words seeded');
+  console.log('• Elementary Words seeded');
 
   const n4Kanji = await seedKanjiArea(n4.id, 1, N4_KANJI_THEMES, {
-    slug: 'n4-kanji-forest', title: 'N4 Kanji Forest', subtitle: '~140 more kanji', icon: '🌳', color: 'lime',
-    tag: 'n4-kanji', jlpt: 4, bossSlug: 'n4-kanji-boss', bossTitle: 'N4 Kanji Boss', bossXp: 300,
+    slug: 'n4-kanji-forest', title: 'Elementary Kanji Forest', subtitle: '~140 more kanji', icon: '🌳', color: 'lime',
+    tag: 'n4-kanji', jlpt: 4, bossSlug: 'n4-kanji-boss', bossTitle: 'Elementary Kanji Boss', bossXp: 300,
   });
-  console.log('• N4 Kanji Forest seeded');
+  console.log('• Elementary Kanji Forest seeded');
 
   const n4Grammar = await seedGrammarArea(n4.id, 2, N4_GRAMMAR_POINTS, {
-    slug: 'n4-grammar-temple', title: 'N4 Grammar Temple', subtitle: 'て-form, conditionals, passive & keigo', icon: '🏯', color: 'orange',
-    tag: 'n4-grammar', jlpt: 4, bossSlug: 'n4-grammar-boss', bossTitle: 'N4 Grammar Boss', bossXp: 300,
+    slug: 'n4-grammar-temple', title: 'Elementary Grammar Temple', subtitle: 'て-form, conditionals, passive & keigo', icon: '🏯', color: 'orange',
+    tag: 'n4-grammar', jlpt: 4, bossSlug: 'n4-grammar-boss', bossTitle: 'Elementary Grammar Boss', bossXp: 300,
   });
-  console.log('• N4 Grammar Temple seeded — N4 course complete');
+  console.log('• Elementary Grammar Temple seeded — Elementary course complete');
+
+  // ===== Courses 3–5: JLPT N3, N2, N1 (each gated behind the previous) =====
+  const n3 = await seedAdvancedCourse(
+    { slug: 'jlpt-n3', title: 'Intermediate', tier: 'Intermediate', description: 'Bridge to fluency: nuanced vocabulary, ~100 kanji, and inference/causation grammar. Follows the JLPT N3 syllabus — a study aid, not the official exam.', jlpt: 3, sort: 2, requiredCourseId: n4.id, icon: '🌸', wordsColor: 'pink', kanjiColor: 'rose', grammarColor: 'fuchsia', wordsBossXp: 300, kanjiBossXp: 350, grammarBossXp: 350 },
+    { vocab: N3_VOCAB_THEMES, kanji: N3_KANJI_THEMES, grammar: N3_GRAMMAR_POINTS },
+  );
+  console.log('• Course: Intermediate seeded');
+
+  const n2 = await seedAdvancedCourse(
+    { slug: 'jlpt-n2', title: 'Upper Intermediate', tier: 'Upper-Int.', description: 'Newspaper-level Japanese: formal vocabulary, ~70 kanji, and written connectives. Follows the JLPT N2 syllabus — a study aid, not the official exam.', jlpt: 2, sort: 3, requiredCourseId: n3.courseId, icon: '🍁', wordsColor: 'red', kanjiColor: 'amber', grammarColor: 'orange', wordsBossXp: 350, kanjiBossXp: 400, grammarBossXp: 400 },
+    { vocab: N2_VOCAB_THEMES, kanji: N2_KANJI_THEMES, grammar: N2_GRAMMAR_POINTS },
+  );
+  console.log('• Course: Upper Intermediate seeded');
+
+  const n1 = await seedAdvancedCourse(
+    { slug: 'jlpt-n1', title: 'Advanced', tier: 'Advanced', description: 'Literary and academic Japanese: advanced vocabulary, ~45 kanji, and formal/literary grammar. Follows the JLPT N1 syllabus — a study aid, not the official exam.', jlpt: 1, sort: 4, requiredCourseId: n2.courseId, icon: '🐉', wordsColor: 'violet', kanjiColor: 'indigo', grammarColor: 'purple', wordsBossXp: 400, kanjiBossXp: 450, grammarBossXp: 500 },
+    { vocab: N1_VOCAB_THEMES, kanji: N1_KANJI_THEMES, grammar: N1_GRAMMAR_POINTS },
+  );
+  console.log('• Course: Advanced seeded');
 
   await seedBadges(
     {
       hiragana: hiraBoss, katakana: kataBoss, selfIntro: conv.bossId, numbers: numbers.bossId,
       vocab: vocab.bossId, kanji: kanji.bossId, grammar: grammar.bossId,
       n4Vocab: n4Vocab.bossId, n4Kanji: n4Kanji.bossId, n4Grammar: n4Grammar.bossId,
+      n3Grammar: n3.grammarBoss, n2Grammar: n2.grammarBoss, n1Grammar: n1.grammarBoss,
     },
     firstQuestSlug,
   );
   console.log('• badges seeded');
 
-  console.log('\n✅ Seed complete — JLPT N5 & N4 as separate courses. Sign in and head to the Roadmap!');
+  console.log('\n✅ Seed complete — JLPT N5, N4, N3, N2 & N1 as five gated courses. Sign in and head to the Roadmap!');
 }
 
 main().catch((e) => {
