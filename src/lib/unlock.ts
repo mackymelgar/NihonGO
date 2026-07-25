@@ -14,6 +14,7 @@ export type UnlockInput = {
   areas: UnlockArea[];
   quests: UnlockQuest[];
   completedQuestIds: Set<string>;
+  knows_japanese?: boolean;
 };
 
 export type UnlockResult = {
@@ -26,7 +27,7 @@ export type UnlockResult = {
  * The first area is always unlocked. If a prior area has no boss, it must be
  * fully completed (all non-side quests) to open the next.
  */
-export function computeUnlocks({ areas, quests, completedQuestIds }: UnlockInput): UnlockResult {
+export function computeUnlocks({ areas, quests, completedQuestIds, knows_japanese }: UnlockInput): UnlockResult {
   const sortedAreas = [...areas].sort((a, b) => a.sort_order - b.sort_order);
   const questsByArea = new Map<string, UnlockQuest[]>();
   for (const q of quests) {
@@ -39,7 +40,7 @@ export function computeUnlocks({ areas, quests, completedQuestIds }: UnlockInput
   let prevAreaCleared: boolean = true; // nothing precedes the first area
   for (let i = 0; i < sortedAreas.length; i++) {
     const area = sortedAreas[i];
-    const unlocked: boolean = i === 0 ? true : prevAreaCleared;
+    const unlocked: boolean = true; // Always open
     areaUnlocked.set(area.id, unlocked);
 
     // Is THIS area "cleared" (so the next one opens)?
@@ -61,7 +62,7 @@ export function computeUnlocks({ areas, quests, completedQuestIds }: UnlockInput
       questUnlocked.set(q.id, false);
       continue;
     }
-    const prereqMet = q.required_quest_id ? completedQuestIds.has(q.required_quest_id) : true;
+    const prereqMet = true; // Always open
     questUnlocked.set(q.id, prereqMet);
   }
 

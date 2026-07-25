@@ -31,6 +31,7 @@ export default function OnboardingPage() {
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('🦊');
   const [romaji, setRomajiLocal] = useState(true);
+  const [knowsJapanese, setKnowsJapanese] = useState(false);
 
   if (isLoading) return <LoadingState label="Getting things ready…" />;
 
@@ -43,6 +44,7 @@ export default function OnboardingPage() {
       romaji_enabled: romaji,
       timezone: detectTimezone(),
       onboarding_completed: true,
+      knows_japanese: knowsJapanese,
     });
     navigate('/roadmap', { replace: true });
   }
@@ -56,7 +58,39 @@ export default function OnboardingPage() {
       </Button>
     </Screen>,
 
-    // 1 — Goal
+    // 1 — Experience
+    <Screen key="experience" title="What's your experience level?" subtitle="We'll tailor your starting point based on this.">
+      <div className="grid grid-cols-1 gap-3">
+        <button
+          onClick={() => {
+            setKnowsJapanese(false);
+            setStep(2);
+          }}
+          className={cn(
+            'flex flex-col items-center gap-1 rounded-2xl border-2 p-4 text-lg font-semibold transition-colors',
+            !knowsJapanese ? 'border-accent bg-accent/10' : 'border-black/10 hover:border-accent/50 dark:border-white/15'
+          )}
+        >
+          Absolute Beginner
+          <span className="text-sm font-normal text-ink-muted">I want to start from zero.</span>
+        </button>
+        <button
+          onClick={() => {
+            setKnowsJapanese(true);
+            setStep(2);
+          }}
+          className={cn(
+            'flex flex-col items-center gap-1 rounded-2xl border-2 p-4 text-lg font-semibold transition-colors',
+            knowsJapanese ? 'border-accent bg-accent/10' : 'border-black/10 hover:border-accent/50 dark:border-white/15'
+          )}
+        >
+          I know some Japanese
+          <span className="text-sm font-normal text-ink-muted">Unlock everything and let me explore.</span>
+        </button>
+      </div>
+    </Screen>,
+
+    // 2 — Goal
     <Screen key="goal" title="What brings you here?" subtitle="We'll tailor your encouragement to your goal.">
       <div className="grid grid-cols-2 gap-3">
         {GOALS.map((g) => (
@@ -75,12 +109,12 @@ export default function OnboardingPage() {
           </button>
         ))}
       </div>
-      <Button size="lg" className="mt-6 w-full" onClick={() => setStep(2)}>
+      <Button size="lg" className="mt-6 w-full" onClick={() => setStep(3)}>
         Continue
       </Button>
     </Screen>,
 
-    // 2 — Identity
+    // 3 — Identity
     <Screen key="identity" title="Choose your hero" subtitle="Pick a name and an avatar.">
       <label className="mb-4 flex flex-col gap-1 text-sm font-semibold">
         Display name
@@ -105,12 +139,12 @@ export default function OnboardingPage() {
           </button>
         ))}
       </div>
-      <Button size="lg" className="mt-6 w-full" onClick={() => setStep(3)}>
+      <Button size="lg" className="mt-6 w-full" onClick={() => setStep(4)}>
         Continue
       </Button>
     </Screen>,
 
-    // 3 — Romaji
+    // 4 — Romaji
     <Screen key="romaji" title="Show romaji?" subtitle="Romaji spells Japanese sounds with English letters. You can change this anytime.">
       <label className="flex items-center justify-between rounded-2xl border-2 border-black/10 p-4 dark:border-white/15">
         <span className="font-semibold">Show romaji under Japanese text</span>

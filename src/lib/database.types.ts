@@ -56,6 +56,7 @@ export type ProfileRow = {
   daily_review_limit: number;
   tts_rate: number;
   onboarding_completed: boolean;
+  knows_japanese: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

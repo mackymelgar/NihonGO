@@ -40,17 +40,20 @@ export function useRoadmap() {
     queryKey: ['roadmap', user?.id],
     enabled: Boolean(user?.id),
     queryFn: async (): Promise<Roadmap> => {
-      const [courses, areas, quests, progress] = await Promise.all([
+      const [courses, areas, quests, progress, profile] = await Promise.all([
         supabase.from('courses').select('*').eq('status', 'published').is('deleted_at', null).order('sort_order'),
         supabase.from('areas').select('*').eq('status', 'published').is('deleted_at', null).order('sort_order'),
         supabase.from('quests').select('*').eq('status', 'published').is('deleted_at', null).order('sort_order'),
         supabase.from('user_quest_progress').select('*').eq('user_id', user!.id),
+        supabase.from('profiles').select('knows_japanese').eq('id', user!.id).single(),
       ]);
       if (courses.error) throw courses.error;
       if (areas.error) throw areas.error;
       if (quests.error) throw quests.error;
       if (progress.error) throw progress.error;
+      if (profile.error) throw profile.error;
 
+      const knows_japanese = profile.data.knows_japanese ?? false;
       const progressByQuest = new Map(progress.data.map((p) => [p.quest_id, p]));
       const completedQuestIds = new Set(
         progress.data.filter((p) => p.status === 'completed').map((p) => p.quest_id),
@@ -71,13 +74,14 @@ export function useRoadmap() {
           areas: courseAreas,
           quests: courseQuests,
           completedQuestIds,
+          knows_japanese,
         });
 
         const bosses = courseQuests.filter((q) => q.quest_type === 'boss');
         const complete = bosses.length > 0 && bosses.every((b) => completedQuestIds.has(b.id));
         completeByCourse.set(course.id, complete);
 
-        const unlocked = !course.required_course_id || (completeByCourse.get(course.required_course_id) ?? false);
+        const unlocked = true; // Always open
 
         // Apply course gating to every quest's effective unlock.
         for (const q of courseQuests) {
